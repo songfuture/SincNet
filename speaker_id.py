@@ -230,7 +230,7 @@ for epoch in range(N_epochs):
   for i in range(N_batches):
 
     [inp,lab]=create_batches_rnd(batch_size,data_folder,wav_lst_tr,snt_tr,wlen,lab_dict,0.2)
-    pout=DNN2_net(DNN1_net(CNN_net(inp)))
+    pout=DNN2_net(DNN1_net(CNN_net(inp))) #inp size [batch_size,wlen];
     
     pred=torch.max(pout,dim=1)[1]
     loss = cost(pout, lab.long())
