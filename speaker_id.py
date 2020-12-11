@@ -274,16 +274,16 @@ for epoch in range(N_epochs):
      #[fs,signal]=scipy.io.wavfile.read(data_folder+wav_lst_te[i])
      #signal=signal.astype(float)/32768
 
-     [signal, fs] = sf.read(data_folder+wav_lst_te[i])
+     [signal, fs] = sf.read(data_folder+wav_lst_te[i]) #读取每一条测试wav
 
      signal=torch.from_numpy(signal).float().cuda().contiguous()
-     lab_batch=lab_dict[wav_lst_te[i]]
+     lab_batch=lab_dict[wav_lst_te[i]] #获取测试wav的label
     
      # split signals into chunks
      beg_samp=0
      end_samp=wlen
      
-     N_fr=int((signal.shape[0]-wlen)/(wshift))
+     N_fr=int((signal.shape[0]-wlen)/(wshift)) #测试语音的chunk数
      
 
      sig_arr=torch.zeros([Batch_dev,wlen]).float().cuda().contiguous()
