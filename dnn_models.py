@@ -83,34 +83,36 @@ class SincConv_fast(nn.Module):
             raise ValueError('SincConv does not support groups.')
 
         self.sample_rate = sample_rate
-        self.min_low_hz = min_low_hz
-        self.min_band_hz = min_band_hz
+        self.min_low_hz = min_low_hz #50
+        self.min_band_hz = min_band_hz #50
 
         # initialize filterbanks such that they are equally spaced in Mel scale
         low_hz = 30
-        high_hz = self.sample_rate / 2 - (self.min_low_hz + self.min_band_hz)
+        high_hz = self.sample_rate / 2 - (self.min_low_hz + self.min_band_hz) #8000-100=7900
+        #论文里是在[0,sample_rate / 2]初始化，代码里是在[30,sample_rate/2-(min_low_hz+min_band_hz)]进行初始化
 
         mel = np.linspace(self.to_mel(low_hz),
                           self.to_mel(high_hz),
-                          self.out_channels + 1)
-        hz = self.to_hz(mel)
+                          self.out_channels + 1) 
+        #这里out_channels不同于{输入图像的RGB三通道，输出为filter的个数}或者{这里的音频输入通道为1}，而指输出一维向量的长度.各个元素大于30小于7900
+        hz = self.to_hz(mel) #长为out_channels+1=81的一维array，行向量，
         
 
         # filter lower frequency (out_channels, 1)
-        self.low_hz_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1))
+        self.low_hz_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1)) #长为out_channels=80的tensor([])列向量
 
         # filter frequency band (out_channels, 1)
-        self.band_hz_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1))
+        self.band_hz_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1)) #长为out_channels=80列向量
 
         # Hamming window
         #self.window_ = torch.hamming_window(self.kernel_size)
-        n_lin=torch.linspace(0, (self.kernel_size/2)-1, steps=int((self.kernel_size/2))) # computing only half of the window
-        self.window_=0.54-0.46*torch.cos(2*math.pi*n_lin/self.kernel_size);
+        n_lin=torch.linspace(0, (self.kernel_size/2)-1, steps=int((self.kernel_size/2))) #长int((self.kernel_size/2)=125的tensor([]),size([125])列向量 # computing only half of the window
+        self.window_=0.54-0.46*torch.cos(2*math.pi*n_lin/self.kernel_size) #长125的行向量
 
 
         # (1, kernel_size/2)
         n = (self.kernel_size - 1) / 2.0
-        self.n_ = 2*math.pi*torch.arange(-n, 0).view(1, -1) / self.sample_rate # Due to symmetry, I only need half of the time axes
+        self.n_ = 2*math.pi*torch.arange(-n, 0).view(1, -1) / self.sample_rate # Due to symmetry, I only need half of the time axes #长125的tensor([[]]),size([1,125])行向量
 
  
 
@@ -127,13 +129,14 @@ class SincConv_fast(nn.Module):
             Batch of sinc filters activations.
         """
 
-        self.n_ = self.n_.to(waveforms.device)
+        self.n_ = self.n_.to(waveforms.device) #125 行向量tensor([[a,b,c]])
 
-        self.window_ = self.window_.to(waveforms.device)
+        self.window_ = self.window_.to(waveforms.device) #125 列向量tensor([a,b,c])
 
-        low = self.min_low_hz  + torch.abs(self.low_hz_)
+        low = self.min_low_hz  + torch.abs(self.low_hz_) #80 列向量tensor([a,b,c])
         
-        high = torch.clamp(low + self.min_band_hz + torch.abs(self.band_hz_),self.min_low_hz,self.sample_rate/2)
+        high = torch.clamp(low + self.min_band_hz + torch.abs(self.band_hz_),self.min_low_hz,self.sample_rate/2)  #80列向量tensor([a,b,c])
+        #将low + self.min_band_hz + torch.abs(self.band_hz_)限制到min_low_hz=50和self.sample_rate/2之间
         band=(high-low)[:,0]
         
         f_times_t_low = torch.matmul(low, self.n_)
