@@ -292,23 +292,23 @@ for epoch in range(N_epochs):
      count_fr=0
      count_fr_tot=0
      while end_samp<signal.shape[0]:
-         sig_arr[count_fr,:]=signal[beg_samp:end_samp]
-         beg_samp=beg_samp+wshift
-         end_samp=beg_samp+wlen
-         count_fr=count_fr+1
-         count_fr_tot=count_fr_tot+1
-         if count_fr==Batch_dev:
+         sig_arr[count_fr,:]=signal[beg_samp:end_samp] #signal的一个frame(或者称为chunk)
+         beg_samp=beg_samp+wshift #递增到下一个frame的start index
+         end_samp=beg_samp+wlen #下一个frame的end index
+         count_fr=count_fr+1 #frame的index加1
+         count_fr_tot=count_fr_tot+1 #total frame计数加1
+         if count_fr==Batch_dev: #Batch_dev=128是定值；当一个wav通过while内if以上的数据变为[Batch_dev,wlen]的矩阵后，进入if语句，输入网络
              inp=Variable(sig_arr)
-             pout[count_fr_tot-Batch_dev:count_fr_tot,:]=DNN2_net(DNN1_net(CNN_net(inp)))
-             count_fr=0
-             sig_arr=torch.zeros([Batch_dev,wlen]).float().cuda().contiguous()
+             pout[count_fr_tot-Batch_dev:count_fr_tot,:]=DNN2_net(DNN1_net(CNN_net(inp))) #pout为[N_fr+1,class_lay[-1]]，即对每一帧有个类别输出。count_fr_tot==Batch_dev？？？
+             count_fr=0 #count_fr归0，准备为下一条wav计数
+             sig_arr=torch.zeros([Batch_dev,wlen]).float().cuda().contiguous() #清空sig_arr，准备下一个wav进来
    
      if count_fr>0:
       inp=Variable(sig_arr[0:count_fr])
       pout[count_fr_tot-count_fr:count_fr_tot,:]=DNN2_net(DNN1_net(CNN_net(inp)))
 
     
-     pred=torch.max(pout,dim=1)[1]
+     pred=torch.max(pout,dim=1)[1] #找pout的各frame(即array的行)最大预测值对应的索引，即为该frame的预测结果
      loss = cost(pout, lab.long())
      err = torch.mean((pred!=lab.long()).float())
     
