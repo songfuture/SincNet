@@ -30,11 +30,11 @@ def create_batches_rnd(batch_size,data_folder,wav_lst,N_snt,wlen,lab_dict,fact_a
     
  # Initialization of the minibatch (batch_size,[0=>x_t,1=>x_t+N,1=>random_samp])
  sig_batch=np.zeros([batch_size,wlen]) #初始化存放batch输入数据的矩阵
- lab_batch=np.zeros(batch_size)
+ lab_batch=np.zeros(batch_size) #初始化存放batch label的矩阵
   
- snt_id_arr=np.random.randint(N_snt, size=batch_size)
+ snt_id_arr=np.random.randint(N_snt, size=batch_size) #生成batch_size个随机数，随机数介于[0,数据集大小)之间，用于随机取wav文件
  
- rand_amp_arr = np.random.uniform(1.0-fact_amp,1+fact_amp,batch_size)
+ rand_amp_arr = np.random.uniform(1.0-fact_amp,1+fact_amp,batch_size) #生成batch_size个随机数，随机数服从(1.0-fact_amp,1+fact_amp)均匀分布，像是噪音的作用？？？
 
  for i in range(batch_size):
      
@@ -42,19 +42,19 @@ def create_batches_rnd(batch_size,data_folder,wav_lst,N_snt,wlen,lab_dict,fact_a
   #[fs,signal]=scipy.io.wavfile.read(data_folder+wav_lst[snt_id_arr[i]])
   #signal=signal.astype(float)/32768
 
-  [signal, fs] = sf.read(data_folder+wav_lst[snt_id_arr[i]])
+  [signal, fs] = sf.read(data_folder+wav_lst[snt_id_arr[i]]) #读取数据集中索引为snt_id_arr[i]的wav文件，返回(各采样点幅度值组成的列表,采样率)
 
   # accesing to a random chunk
-  snt_len=signal.shape[0]
-  snt_beg=np.random.randint(snt_len-wlen-1) #randint(0, snt_len-2*wlen-1)
-  snt_end=snt_beg+wlen
+  snt_len=signal.shape[0] #一条wav的采样数
+  snt_beg=np.random.randint(snt_len-wlen-1) #生成一个随机数，作为chunk的start index#randint(0, snt_len-2*wlen-1)
+  snt_end=snt_beg+wlen #chunk的end index
 
   channels = len(signal.shape)
   if channels == 2:
     print('WARNING: stereo to mono: '+data_folder+wav_lst[snt_id_arr[i]])
     signal = signal[:,0]
   
-  sig_batch[i,:]=signal[snt_beg:snt_end]*rand_amp_arr[i]
+  sig_batch[i,:]=signal[snt_beg:snt_end]*rand_amp_arr[i] #batch的第i个输入为第snt_id_arr[i]]个wav的一个chunk([snt_beg:snt_end])
   lab_batch[i]=lab_dict[wav_lst[snt_id_arr[i]]]
   
  inp=Variable(torch.from_numpy(sig_batch).float().cuda().contiguous())
