@@ -433,7 +433,7 @@ class SincNet(nn.Module):
               
          else:
           self.conv.append(nn.Conv1d(self.cnn_N_filt[i-1], self.cnn_N_filt[i], self.cnn_len_filt[i]))
-          
+                          #torch.nn.Conv1d(in_channels:int,out_channels:int,kernel_size:Union[T,Tuple[T]])
          current_input=int((current_input-self.cnn_len_filt[i]+1)/self.cnn_max_pool_len[i])
 
          
