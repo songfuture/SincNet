@@ -115,6 +115,7 @@ class SincConv_fast(nn.Module):
         n = (self.kernel_size - 1) / 2.0
         self.n_ = 2*math.pi*torch.arange(-n, 0).view(1, -1) / self.sample_rate # Due to symmetry, I only need half of the time axes 
         #tensor([[-0.0491, -0.0487,...,-0.0004]]),torch.Size([1, 125])
+        #input : input tensor of shape ({minibatch} , in_channels , iW)(minibatch,in_channels,iW)
  
 
 
@@ -165,7 +166,10 @@ class SincConv_fast(nn.Module):
         #waveforms：[batch_size,wlen] = [128,3200]
         #filters：torch.Size([80, 1, 251])
         #torch.nn.functional.conv1d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1) → Tensor
-        
+        #input: input tensor of hape(minibatch,in_channels,iW)
+        #weight:filters of shape(out_channels,in_channels/groups,kW)
+        #output:(minibatch,out_channels,Lout)
+        #根据iw,kw按公式计算Lout
 
         
         
