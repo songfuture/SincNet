@@ -90,30 +90,31 @@ class SincConv_fast(nn.Module):
         low_hz = 30
         high_hz = self.sample_rate / 2 - (self.min_low_hz + self.min_band_hz) #8000-100=7900
         #论文里是在[0,sample_rate / 2]初始化，代码里是在[30,sample_rate/2-(min_low_hz+min_band_hz)]进行初始化
+        #这里事实上初始化的是band start 的hz
 
         mel = np.linspace(self.to_mel(low_hz),
                           self.to_mel(high_hz),
-                          self.out_channels + 1) 
-        #这里out_channels不同于{输入图像的RGB三通道，输出为filter的个数}或者{这里的音频输入通道为1}，而指输出一维向量的长度.各个元素大于30小于7900
-        hz = self.to_hz(mel) #长为out_channels+1=81的一维array，行向量，
+                          self.out_channels + 1)         
+        hz = self.to_hz(mel) #长为out_channels+1=81的一维array，行向量，array([30.,52.85710786,..,7900.])
         
 
         # filter lower frequency (out_channels, 1)
-        self.low_hz_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1)) #长为out_channels=80的tensor([])列向量
+        self.low_hz_ = nn.Parameter(torch.Tensor(hz[:-1]).view(-1, 1)) #torch.Size([80, 1])列向量,tensor([[30.0000],[52.8571],...,[7638.8999]])
 
         # filter frequency band (out_channels, 1)
-        self.band_hz_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1)) #长为out_channels=80列向量
+        self.band_hz_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1)) #torch.Size([80, 1])列向量,tensor([[ 22.8571],[ 23.5728],...,[261.1002]])
 
         # Hamming window
         #self.window_ = torch.hamming_window(self.kernel_size)
-        n_lin=torch.linspace(0, (self.kernel_size/2)-1, steps=int((self.kernel_size/2))) #长int((self.kernel_size/2)=125的tensor([]),size([125])列向量 # computing only half of the window
-        self.window_=0.54-0.46*torch.cos(2*math.pi*n_lin/self.kernel_size) #长125的行向量
+        n_lin=torch.linspace(0, (self.kernel_size/2)-1, steps=int((self.kernel_size/2))) # computing only half of the window,随机初始化窗口？
+        #n_lin:torch.Size([125]),tensor([ 0.0000, 1.0040,...,124.5000]) 
+        self.window_=0.54-0.46*torch.cos(2*math.pi*n_lin/self.kernel_size) #torch.Size([125]),tensor([0.0800, 0.0801,...,0.9999])
 
 
-        # (1, kernel_size/2)
+        # (1, kernel_size/2),对应公式4中的n
         n = (self.kernel_size - 1) / 2.0
-        self.n_ = 2*math.pi*torch.arange(-n, 0).view(1, -1) / self.sample_rate # Due to symmetry, I only need half of the time axes #长125的tensor([[]]),size([1,125])行向量
-
+        self.n_ = 2*math.pi*torch.arange(-n, 0).view(1, -1) / self.sample_rate # Due to symmetry, I only need half of the time axes 
+        #tensor([[-0.0491, -0.0487,...,-0.0004]]),torch.Size([1, 125])
  
 
 
@@ -129,32 +130,34 @@ class SincConv_fast(nn.Module):
             Batch of sinc filters activations.
         """
 
-        self.n_ = self.n_.to(waveforms.device) #125 行向量tensor([[a,b,c]])
+        self.n_ = self.n_.to(waveforms.device) #torch.Size([1, 125])
 
-        self.window_ = self.window_.to(waveforms.device) #125 列向量tensor([a,b,c])
-
-        low = self.min_low_hz  + torch.abs(self.low_hz_) #80 列向量tensor([a,b,c])
+        self.window_ = self.window_.to(waveforms.device) #torch.Size([125])
         
-        high = torch.clamp(low + self.min_band_hz + torch.abs(self.band_hz_),self.min_low_hz,self.sample_rate/2)  #80列向量tensor([a,b,c])
+        #对应公式(5)
+        low = self.min_low_hz  + torch.abs(self.low_hz_) #torch.Size([80, 1]),tensor([[80.0000],[102.8571],...,[7688.8999]])        
+        #对应公式(6)
+        high = torch.clamp(low + self.min_band_hz + torch.abs(self.band_hz_),self.min_low_hz,self.sample_rate/2)  #torch.Size([80, 1]),tensor([[152.8571],[176.4299],...,[8000.0000]
         #将low + self.min_band_hz + torch.abs(self.band_hz_)限制到min_low_hz=50和self.sample_rate/2之间
-        band=(high-low)[:,0]
+        band=(high-low)[:,0] #torch.Size([80]),tensor([72.8571,73.5728,...,311.1001])
         
-        f_times_t_low = torch.matmul(low, self.n_)
-        f_times_t_high = torch.matmul(high, self.n_)
+        #f1*2pi*n sinc括号里的计算
+        f_times_t_low = torch.matmul(low, self.n_) #torch.Size([80, 125])
+        #f2*2pi*n sinc括号里的计算
+        f_times_t_high = torch.matmul(high, self.n_) #torch.Size([80, 125])
+        band_pass_left=((torch.sin(f_times_t_high)-torch.sin(f_times_t_low))/(self.n_/2))*self.window_  #torch.Size([80, 125]) # Equivalent of Eq.4 and Eq.7 of the reference paper (SPEAKER RECOGNITION FROM RAW WAVEFORM WITH SINCNET). I just have expanded the sinc and simplified the terms. This way I avoid several useless computations. 
+        band_pass_center = 2*band.view(-1,1) #torch.Size([80, 1])
+        band_pass_right= torch.flip(band_pass_left,dims=[1]) #torch.Size([80, 125]),每行的125个元素进行翻转，例如[1，2，3，4]变为[4，3，2，1]
+        
+        
+        band_pass=torch.cat([band_pass_left,band_pass_center,band_pass_right],dim=1) #torch.Size([80, 251])
 
-        band_pass_left=((torch.sin(f_times_t_high)-torch.sin(f_times_t_low))/(self.n_/2))*self.window_ # Equivalent of Eq.4 of the reference paper (SPEAKER RECOGNITION FROM RAW WAVEFORM WITH SINCNET). I just have expanded the sinc and simplified the terms. This way I avoid several useless computations. 
-        band_pass_center = 2*band.view(-1,1)
-        band_pass_right= torch.flip(band_pass_left,dims=[1])
         
-        
-        band_pass=torch.cat([band_pass_left,band_pass_center,band_pass_right],dim=1)
-
-        
-        band_pass = band_pass / (2*band[:,None])
+        band_pass = band_pass / (2*band[:,None]) #torch.Size([80, 251])
         
 
         self.filters = (band_pass).view(
-            self.out_channels, 1, self.kernel_size)
+            self.out_channels, 1, self.kernel_size) #torch.Size([80, 1, 251])
 
         return F.conv1d(waveforms, self.filters, stride=self.stride,
                         padding=self.padding, dilation=self.dilation,
