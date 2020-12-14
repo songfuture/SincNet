@@ -115,7 +115,7 @@ class SincConv_fast(nn.Module):
         n = (self.kernel_size - 1) / 2.0
         self.n_ = 2*math.pi*torch.arange(-n, 0).view(1, -1) / self.sample_rate # Due to symmetry, I only need half of the time axes 
         #tensor([[-0.0491, -0.0487,...,-0.0004]]),torch.Size([1, 125])
-        #input : input tensor of shape ({minibatch} , in_channels , iW)(minibatch,in_channels,iW)
+        
  
 
 
