@@ -144,7 +144,7 @@ np.random.seed(seed)
 cost = nn.NLLLoss()
 
   
-# Converting context and shift in samples
+# Converting context and shift in samples #除以1000是将ms转化成s
 wlen=int(fs*cw_len/1000.00)
 wshift=int(fs*cw_shift/1000.00)
 
@@ -153,7 +153,7 @@ Batch_dev=128
 
 
 # Feature extractor CNN
-CNN_arch = {'input_dim': wlen,
+CNN_arch = {'input_dim': wlen, 
           'fs': fs,
           'cnn_N_filt': cnn_N_filt,
           'cnn_len_filt': cnn_len_filt,
@@ -173,7 +173,8 @@ CNN_net.cuda()
 lab_dict=np.load(class_dict_file).item()
 
 
-
+#DNN1的输入是CNN的输出
+#DNN1三层
 DNN1_arch = {'input_dim': CNN_net.out_dim,
           'fc_lay': fc_lay,
           'fc_drop': fc_drop, 
@@ -187,10 +188,11 @@ DNN1_arch = {'input_dim': CNN_net.out_dim,
 DNN1_net=MLP(DNN1_arch)
 DNN1_net.cuda()
 
-
+#DNN1输出作为DNN2输入，即DNN1最后一层的神经元个数为DNN2输入层维度
+#DNN2一层全连接层作为分类层
 DNN2_arch = {'input_dim':fc_lay[-1] ,
           'fc_lay': class_lay,
-          'fc_drop': class_drop, 
+          'fc_drop': class_drop,  
           'fc_use_batchnorm': class_use_batchnorm,
           'fc_use_laynorm': class_use_laynorm,
           'fc_use_laynorm_inp': class_use_laynorm_inp,
@@ -202,7 +204,7 @@ DNN2_arch = {'input_dim':fc_lay[-1] ,
 DNN2_net=MLP(DNN2_arch)
 DNN2_net.cuda()
 
-
+#判断是否有保存的已经训练到中间的模型
 if pt_file!='none':
    checkpoint_load = torch.load(pt_file)
    CNN_net.load_state_dict(checkpoint_load['CNN_model_par'])
@@ -230,7 +232,7 @@ for epoch in range(N_epochs):
   for i in range(N_batches):
 
     [inp,lab]=create_batches_rnd(batch_size,data_folder,wav_lst_tr,snt_tr,wlen,lab_dict,0.2)
-    pout=DNN2_net(DNN1_net(CNN_net(inp))) #inp size [batch_size,wlen];
+    pout=DNN2_net(DNN1_net(CNN_net(inp))) #inp size [batch_size,wlen];网络层里还有维度变换
     
     pred=torch.max(pout,dim=1)[1]
     loss = cost(pout, lab.long())
