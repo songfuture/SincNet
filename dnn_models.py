@@ -378,40 +378,40 @@ class SincNet(nn.Module):
     def __init__(self,options):
        super(SincNet,self).__init__()
     
-       self.cnn_N_filt=options['cnn_N_filt']
-       self.cnn_len_filt=options['cnn_len_filt']
-       self.cnn_max_pool_len=options['cnn_max_pool_len']
+       self.cnn_N_filt=options['cnn_N_filt'] #80,60,60
+       self.cnn_len_filt=options['cnn_len_filt'] #251,5,5
+       self.cnn_max_pool_len=options['cnn_max_pool_len'] #3,3,3
        
        
-       self.cnn_act=options['cnn_act']
-       self.cnn_drop=options['cnn_drop']
+       self.cnn_act=options['cnn_act'] #leaky_relu,leaky_relu,leaky_relu
+       self.cnn_drop=options['cnn_drop'] #0.0,0.0,0.0
        
-       self.cnn_use_laynorm=options['cnn_use_laynorm']
-       self.cnn_use_batchnorm=options['cnn_use_batchnorm']
-       self.cnn_use_laynorm_inp=options['cnn_use_laynorm_inp']
-       self.cnn_use_batchnorm_inp=options['cnn_use_batchnorm_inp']
+       self.cnn_use_laynorm=options['cnn_use_laynorm'] #True,True,True
+       self.cnn_use_batchnorm=options['cnn_use_batchnorm'] #False,False,False
+       self.cnn_use_laynorm_inp=options['cnn_use_laynorm_inp'] #True
+       self.cnn_use_batchnorm_inp=options['cnn_use_batchnorm_inp'] #False
        
-       self.input_dim=int(options['input_dim'])
+       self.input_dim=int(options['input_dim']) #wlen
        
-       self.fs=options['fs']
+       self.fs=options['fs'] #16000
        
-       self.N_cnn_lay=len(options['cnn_N_filt'])
-       self.conv  = nn.ModuleList([])
+       self.N_cnn_lay=len(options['cnn_N_filt']) #3
+       self.conv  = nn.ModuleList([]) #container
        self.bn  = nn.ModuleList([])
        self.ln  = nn.ModuleList([])
        self.act = nn.ModuleList([])
        self.drop = nn.ModuleList([])
        
              
-       if self.cnn_use_laynorm_inp:
-           self.ln0=LayerNorm(self.input_dim)
+       if self.cnn_use_laynorm_inp: #use_laynorm_input
+           self.ln0=LayerNorm(self.input_dim) #输入层进行层归一化
            
        if self.cnn_use_batchnorm_inp:
            self.bn0=nn.BatchNorm1d([self.input_dim],momentum=0.05)
            
        current_input=self.input_dim 
        
-       for i in range(self.N_cnn_lay):
+       for i in range(self.N_cnn_lay): #i=0,1,2
          
          N_filt=int(self.cnn_N_filt[i])
          len_filt=int(self.cnn_len_filt[i])
@@ -427,10 +427,10 @@ class SincNet(nn.Module):
 
          self.bn.append(nn.BatchNorm1d(N_filt,int((current_input-self.cnn_len_filt[i]+1)/self.cnn_max_pool_len[i]),momentum=0.05))
             
-
+         #只有i==0时，使用 SincConv_fast，其余两层使用普通一维卷积
          if i==0:
           self.conv.append(SincConv_fast(self.cnn_N_filt[0],self.cnn_len_filt[0],self.fs))
-              
+             
          else:
           self.conv.append(nn.Conv1d(self.cnn_N_filt[i-1], self.cnn_N_filt[i], self.cnn_len_filt[i]))
                           #torch.nn.Conv1d(in_channels:int,out_channels:int,kernel_size:Union[T,Tuple[T]])
@@ -451,8 +451,7 @@ class SincNet(nn.Module):
        if bool(self.cnn_use_batchnorm_inp):
         x=self.bn0((x))
         
-       x=x.view(batch,1,seq_len)
-
+       x=x.view(batch,1,seq_len) #转化成卷积层的输入维度格式
        
        for i in range(self.N_cnn_lay):
            
