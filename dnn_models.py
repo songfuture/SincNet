@@ -276,13 +276,13 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         
         self.input_dim=int(options['input_dim'])
-        self.fc_lay=options['fc_lay']
-        self.fc_drop=options['fc_drop']
-        self.fc_use_batchnorm=options['fc_use_batchnorm']
-        self.fc_use_laynorm=options['fc_use_laynorm']
-        self.fc_use_laynorm_inp=options['fc_use_laynorm_inp']
-        self.fc_use_batchnorm_inp=options['fc_use_batchnorm_inp']
-        self.fc_act=options['fc_act']
+        self.fc_lay=options['fc_lay'] #2048,2048,2048
+        self.fc_drop=options['fc_drop'] #0.0,0.0,0.0
+        self.fc_use_batchnorm=options['fc_use_batchnorm'] #True,True,True
+        self.fc_use_laynorm=options['fc_use_laynorm'] #False,False,False
+        self.fc_use_laynorm_inp=options['fc_use_laynorm_inp'] #True
+        self.fc_use_batchnorm_inp=options['fc_use_batchnorm_inp'] #False
+        self.fc_act=options['fc_act'] #leaky_relu,leaky_relu,leaky_relu
         
        
         self.wx  = nn.ModuleList([])
@@ -294,15 +294,15 @@ class MLP(nn.Module):
 
        
         # input layer normalization
-        if self.fc_use_laynorm_inp:
+        if self.fc_use_laynorm_inp: #True
            self.ln0=LayerNorm(self.input_dim)
           
         # input batch normalization    
-        if self.fc_use_batchnorm_inp:
+        if self.fc_use_batchnorm_inp: #False
            self.bn0=nn.BatchNorm1d([self.input_dim],momentum=0.05)
            
            
-        self.N_fc_lay=len(self.fc_lay)
+        self.N_fc_lay=len(self.fc_lay) #3
              
         current_input=self.input_dim
         
