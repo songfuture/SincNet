@@ -163,7 +163,7 @@ class SincConv_fast(nn.Module):
         return F.conv1d(waveforms, self.filters, stride=self.stride,
                         padding=self.padding, dilation=self.dilation,
                          bias=None, groups=1) 
-        #waveforms：[batch_size,wlen] = [128,3200]
+        #waveforms：[batch_size,wlen] = [128,1,3200]
         #filters：torch.Size([80, 1, 251])
         #torch.nn.functional.conv1d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1) → Tensor
         #input: input tensor of hape(minibatch,in_channels,iW)
