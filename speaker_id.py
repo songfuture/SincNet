@@ -333,7 +333,7 @@ for epoch in range(N_epochs):
                'DNN1_model_par': DNN1_net.state_dict(),
                'DNN2_model_par': DNN2_net.state_dict(),
                }
-   torch.save(checkpoint,output_folder+'/model_raw.pkl') #保存训练完的网络的参数
+   torch.save(checkpoint,output_folder+'/model_raw.pkl') 
   
   else:
    print("epoch %i, loss_tr=%f err_tr=%f" % (epoch, loss_tot,err_tot))
