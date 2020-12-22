@@ -333,7 +333,7 @@ for epoch in range(N_epochs):
 
    checkpoint={'CNN_model_par': CNN_net.state_dict(),
                'DNN1_model_par': DNN1_net.state_dict(),
-               'DNN2_model_par': DNN2_net.state_dict(),
+               'DNN2_model_par': DNN2_net.state_dict(),  #net.state_dict()获取各层参数
                }
    torch.save(checkpoint,output_folder+'/model_raw.pkl') #保存训练完的网络的参数
   
