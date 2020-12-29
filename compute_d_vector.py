@@ -186,7 +186,7 @@ with torch.no_grad():
              count_fr=0
              count_fr_tot=0
              while end_samp<signal.shape[0]:
-                en_arr[count_fr]=torch.sum(signal[beg_samp:end_samp].pow(2))
+                en_arr[count_fr]=torch.sum(signal[beg_samp:end_samp].pow(2)) #各个frame的能量计算=该frame所有采样点的平方和
                 beg_samp=beg_samp+wshift
                 end_samp=beg_samp+wlen
                 count_fr=count_fr+1
