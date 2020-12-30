@@ -180,7 +180,7 @@ with torch.no_grad():
              beg_samp=0
              end_samp=wlen
     
-             N_fr=int((signal.shape[0]-wlen)/(wshift))
+             N_fr=int((signal.shape[0]-wlen)/(wshift)) #一条语句所包含的帧数
              Batch_dev=N_fr
              en_arr=torch.zeros(N_fr).float().contiguous().to(device)
              count_fr=0
@@ -194,7 +194,7 @@ with torch.no_grad():
                 if count_fr==N_fr:
                     break
     
-             en_arr_bin=en_arr>torch.mean(en_arr)*0.1
+             en_arr_bin=en_arr>torch.mean(en_arr)*0.1 #判断语句中符合要求的帧数
              en_arr_bin.to(device)
              n_vect_elem=torch.sum(en_arr_bin)
     
@@ -211,8 +211,8 @@ with torch.no_grad():
          N_fr=int((signal.shape[0]-wlen)/(wshift))
          
         
-         sig_arr=torch.zeros([Batch_dev,wlen]).float().to(device).contiguous()
-         dvects=Variable(torch.zeros(N_fr,d_vector_dim).float().to(device).contiguous())
+         sig_arr=torch.zeros([Batch_dev,wlen]).float().to(device).contiguous() #语音（输入）分割成batch个chunck
+         dvects=Variable(torch.zeros(N_fr,d_vector_dim).float().to(device).contiguous()) #d_vector（输出）又保存为语音帧数个d_vector
          count_fr=0
          count_fr_tot=0
          while end_samp<signal.shape[0]:
@@ -221,21 +221,24 @@ with torch.no_grad():
              end_samp=beg_samp+wlen
              count_fr=count_fr+1
              count_fr_tot=count_fr_tot+1
-             if count_fr==Batch_dev:
+             if count_fr==Batch_dev: #当对输入的帧数计数达到batch时，输入网络
                  inp=Variable(sig_arr)
-                 dvects[count_fr_tot-Batch_dev:count_fr_tot,:]=DNN1_net(CNN_net(inp))
-                 count_fr=0
+                 dvects[count_fr_tot-Batch_dev:count_fr_tot,:]=DNN1_net(CNN_net(inp)) #dvects[0:batch_dev,:]，dvects[batch_dev:2*batch_dev,:]的d_vects得到
+                 count_fr=0 #count_fr重新计数，但是count_fr_tot继续累加
                  sig_arr=torch.zeros([Batch_dev,wlen]).float().to(device).contiguous()
-           
-         if count_fr>0:
-          inp=Variable(sig_arr[0:count_fr])
+         #这里应该是少考虑了语音总帧数除以batch_dev的余数,要不然就是作者设计舍弃剩余的语音帧,
+         #inp=Variable(sig_arr[count_fr_tot:count_fr_tot+count_fr])
+         #dvects[count_fr_tot:count_fr_tot+count_fr,:]=DNN1_net(CNN_net(inp)) #此时count_fr_tot+count_fr=N_fr
+         #当到达语音最后一个采样点，但还未到达最后一个batch时，进入该if。也就是说，语音帧数除以batch_dev的余数。比如总帧数是200，batch_dev是128，还余72帧
+         if count_fr>0: #当总语音帧数小于batch_dev时，进入该if语句，比如总帧数是50，batch_dev
+          inp=Variable(sig_arr[0:count_fr]) 
           dvects[count_fr_tot-count_fr:count_fr_tot,:]=DNN1_net(CNN_net(inp))
         
          if avoid_small_en_fr:
-             dvects=dvects.index_select(0, (en_arr_bin==1).nonzero().view(-1))
+             dvects=dvects.index_select(0, (en_arr_bin==1).nonzero().view(-1)) #只选择检测合格帧的d_vects
          
          # averaging and normalizing all the d-vectors
-         d_vect_out=torch.mean(dvects/dvects.norm(p=2, dim=1).view(-1,1),dim=0)
+         d_vect_out=torch.mean(dvects/dvects.norm(p=2, dim=1).view(-1,1),dim=0) #一条语音的d_vect为各个帧的d_vect的均值
          
          # checks for nan
          nan_sum=torch.sum(torch.isnan(d_vect_out))
