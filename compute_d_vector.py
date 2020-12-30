@@ -230,6 +230,7 @@ with torch.no_grad():
          #inp=Variable(sig_arr[count_fr_tot:count_fr_tot+count_fr])
          #dvects[count_fr_tot:count_fr_tot+count_fr,:]=DNN1_net(CNN_net(inp)) #此时count_fr_tot+count_fr=N_fr
          #当到达语音最后一个采样点，但还未到达最后一个batch时，进入该if。也就是说，语音帧数除以batch_dev的余数。比如总帧数是200，batch_dev是128，还余72帧
+         #下面这个语句可以验证一下，对于有余数的情况，如果用下面的语句，那么余数帧的d_vec和语句开始帧的d_vec应该是重复的
          if count_fr>0: #当总语音帧数小于batch_dev时，进入该if语句，比如总帧数是50，batch_dev
           inp=Variable(sig_arr[0:count_fr]) 
           dvects[count_fr_tot-count_fr:count_fr_tot,:]=DNN1_net(CNN_net(inp))
